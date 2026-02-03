@@ -5,3 +5,4 @@ build/
 
 # claude code目录
 .claude/settings.local.json
+__pycache__/

@@ -1,10 +1,12 @@
+import datetime
 import importlib
+import re
 import threading
 import json
 
 import urllib3
 from dotenv import load_dotenv
-from flask import Flask, request, Response, stream_with_context
+from flask import Flask, request, Response, stream_with_context, jsonify
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage, ToolMessage
 from loguru import logger
 
@@ -30,6 +32,15 @@ urllib3.util.ssl_.DEFAULT_CIPHERS = ":".join(
 
 app = Flask(__name__)
 analyzer = AIAnalyzer()
+
+
+# 添加 CORS 支持
+@app.after_request
+def after_request(response):
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+    return response
 
 
 def get_real_time_data_context(user_message, history):
@@ -178,8 +189,10 @@ def get_real_time_data_context(user_message, history):
         return "数据获取失败，请稍后重试"
 
 
-@app.route('/api/chat', methods=['POST'])
+@app.route('/api/chat', methods=['POST', 'OPTIONS'])
 def chat():
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
     data = request.json
     user_message = data.get('message')
     history = data.get('history', [])
@@ -390,6 +403,117 @@ Now provide your REAL analysis without any status messages."""))
     })
 
 
+@app.route('/', methods=['GET'])
+def index():
+    """根路径重定向到 /fund"""
+    from flask import redirect
+    return redirect('/fund')
+
+
+@app.route('/health', methods=['GET'])
+def health_check():
+    """健康检查接口"""
+    return jsonify({"status": "ok", "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")})
+
+
+@app.route('/api/fund/<fund_code>', methods=['GET'])
+def get_fund_info(fund_code):
+    """查询单个基金完整信息"""
+    if not re.match(r'^\d{6}$', fund_code):
+        return jsonify({"success": False, "error": "基金代码必须为6位数字"}), 400
+
+    try:
+        importlib.reload(fund)
+        my_fund = fund.MaYiFund()
+        result = my_fund.get_fund_info(fund_code)
+
+        if result is None:
+            return jsonify({"success": False, "error": f"基金 {fund_code} 不存在或查询失败"}), 404
+
+        return jsonify({"success": True, **result})
+    except Exception as e:
+        logger.error(f"查询基金 {fund_code} 失败: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route('/api/fund/estimate/<fund_code>', methods=['GET'])
+def get_fund_estimate(fund_code):
+    """仅查询基金实时估值（最快）"""
+    if not re.match(r'^\d{6}$', fund_code):
+        return jsonify({"success": False, "error": "基金代码必须为6位数字"}), 400
+
+    try:
+        importlib.reload(fund)
+        my_fund = fund.MaYiFund()
+        result = my_fund.get_fund_info(fund_code)
+
+        if result is None:
+            return jsonify({"success": False, "error": f"基金 {fund_code} 不存在或查询失败"}), 404
+
+        # 只返回估值相关字段
+        return jsonify({
+            "success": True,
+            "fund_code": result["fund_code"],
+            "fund_name": result["fund_name"],
+            "estimate_growth": result["estimate"]["growth"],
+            "estimate_growth_str": result["estimate"]["growth_str"],
+            "estimate_time": result["estimate"]["time"],
+            "has_estimate": result["estimate"]["has_data"]
+        })
+    except Exception as e:
+        logger.error(f"查询基金估值 {fund_code} 失败: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route('/api/fund/batch', methods=['POST', 'OPTIONS'])
+def batch_query_funds():
+    """批量查询基金信息"""
+    # 处理 OPTIONS 预检请求
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+
+    data = request.get_json()
+    if not data or 'codes' not in data:
+        return jsonify({"success": False, "error": "缺少 codes 参数"}), 400
+
+    codes = data['codes']
+    if not isinstance(codes, list):
+        return jsonify({"success": False, "error": "codes 必须是数组"}), 400
+
+    if len(codes) > 20:
+        return jsonify({"success": False, "error": "批量查询最多支持20个基金"}), 400
+
+    if not all(re.match(r'^\d{6}$', str(code)) for code in codes):
+        return jsonify({"success": False, "error": "所有基金代码必须为6位数字"}), 400
+
+    results = []
+    errors = []
+
+    try:
+        importlib.reload(fund)
+        my_fund = fund.MaYiFund()
+
+        for code in codes:
+            try:
+                result = my_fund.get_fund_info(code)
+                if result:
+                    results.append(result)
+                else:
+                    errors.append({"code": code, "error": "查询失败或基金不存在"})
+            except Exception as e:
+                errors.append({"code": code, "error": str(e)})
+
+        return jsonify({
+            "success": True,
+            "count": len(results),
+            "data": results,
+            "errors": errors if errors else None
+        })
+    except Exception as e:
+        logger.error(f"批量查询基金失败: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 @app.route('/fund/sector', methods=['GET'])
 def get_sector_funds():
     """获取指定板块的基金列表"""
@@ -460,4 +584,4 @@ def get_fund():
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8311)
+    app.run(host='localhost', port=8311)

@@ -1,0 +1,111 @@
+ * Serving Flask app 'fund_server'
+ * Debug mode: off
+WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:8311
+ * Running on http://10.56.88.6:8311
+Press CTRL+C to quit
+2026-02-02 22:23:12.930 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched select_fund
+2026-02-02 22:23:13.070 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched seven_A
+2026-02-02 22:23:13.075 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched kx
+2026-02-02 22:23:13.129 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched marker
+2026-02-02 22:23:13.130 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched A
+2026-02-02 22:23:13.277 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched real_time_gold
+2026-02-02 22:23:13.335 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched gold
+2026-02-02 22:23:13.352 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched bk
+2026-02-02 22:23:15.581 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched fund
+127.0.0.1 - - [02/Feb/2026 22:23:15] "GET /fund HTTP/1.1" 200 -
+2026-02-02 22:23:18.988 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched select_fund
+2026-02-02 22:23:19.066 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched seven_A
+2026-02-02 22:23:19.082 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched A
+2026-02-02 22:23:19.082 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched kx
+2026-02-02 22:23:19.177 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched marker
+2026-02-02 22:23:19.296 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched bk
+2026-02-02 22:23:19.310 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched real_time_gold
+2026-02-02 22:23:19.359 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched gold
+2026-02-02 22:23:20.827 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched fund
+127.0.0.1 - - [02/Feb/2026 22:23:20] "GET /fund HTTP/1.1" 200 -
+2026-02-02 22:23:24.005 | INFO     | fund:add_code:167 - 添加基金代码【001618】成功
+2026-02-02 22:23:24.014 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched select_fund
+2026-02-02 22:23:24.119 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched kx
+2026-02-02 22:23:24.128 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched seven_A
+2026-02-02 22:23:24.187 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched A
+2026-02-02 22:23:24.200 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched marker
+2026-02-02 22:23:24.317 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched bk
+2026-02-02 22:23:24.344 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched real_time_gold
+2026-02-02 22:23:24.370 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched gold
+2026-02-02 22:23:25.692 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched fund
+127.0.0.1 - - [02/Feb/2026 22:23:25] "GET /fund?add=001618 HTTP/1.1" 200 -
+2026-02-02 22:23:45.197 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched select_fund
+2026-02-02 22:23:45.265 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched A
+2026-02-02 22:23:45.270 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched seven_A
+2026-02-02 22:23:45.289 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched kx
+2026-02-02 22:23:45.435 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched marker
+2026-02-02 22:23:45.504 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched real_time_gold
+2026-02-02 22:23:45.531 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched bk
+2026-02-02 22:23:45.551 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched gold
+2026-02-02 22:23:46.973 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched fund
+127.0.0.1 - - [02/Feb/2026 22:23:46] "GET /fund HTTP/1.1" 200 -
+127.0.0.1 - - [02/Feb/2026 22:23:47] "GET /favicon.ico HTTP/1.1" 404 -
+2026-02-02 22:23:57.775 | WARNING  | ai_analyzer:init_langchain_llm:172 - 未配置LLM_API_KEY环境变量，跳过AI分析
+127.0.0.1 - - [02/Feb/2026 22:23:57] "POST /api/chat HTTP/1.1" 200 -
+2026-02-02 22:27:16.154 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched select_fund
+2026-02-02 22:27:16.211 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched A
+2026-02-02 22:27:16.277 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched kx
+2026-02-02 22:27:16.282 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched marker
+2026-02-02 22:27:16.291 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched seven_A
+2026-02-02 22:27:16.470 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched bk
+2026-02-02 22:27:16.509 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched real_time_gold
+2026-02-02 22:27:16.529 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched gold
+2026-02-02 22:27:17.958 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched fund
+127.0.0.1 - - [02/Feb/2026 22:27:17] "GET /fund HTTP/1.1" 200 -
+2026-02-02 22:27:34.163 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched select_fund
+2026-02-02 22:27:34.262 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched kx
+2026-02-02 22:27:34.332 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched A
+2026-02-02 22:27:34.375 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched marker
+2026-02-02 22:27:34.389 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched bk
+2026-02-02 22:27:34.507 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched real_time_gold
+2026-02-02 22:27:34.546 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched gold
+2026-02-02 22:27:34.558 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched seven_A
+2026-02-02 22:27:35.796 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched fund
+127.0.0.1 - - [02/Feb/2026 22:27:35] "GET /fund HTTP/1.1" 200 -
+2026-02-02 22:28:30.711 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched select_fund
+2026-02-02 22:28:30.800 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched kx
+2026-02-02 22:28:30.808 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched seven_A
+2026-02-02 22:28:30.833 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched A
+2026-02-02 22:28:30.947 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched marker
+2026-02-02 22:28:31.011 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched bk
+2026-02-02 22:28:31.023 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched real_time_gold
+2026-02-02 22:28:31.055 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched gold
+2026-02-02 22:28:32.920 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched fund
+127.0.0.1 - - [02/Feb/2026 22:28:32] "GET /fund HTTP/1.1" 200 -
+2026-02-02 22:29:12.220 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched select_fund
+2026-02-02 22:29:12.305 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched A
+2026-02-02 22:29:12.402 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched seven_A
+2026-02-02 22:29:12.446 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched kx
+2026-02-02 22:29:12.460 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched marker
+2026-02-02 22:29:12.468 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched bk
+2026-02-02 22:29:12.496 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched real_time_gold
+2026-02-02 22:29:12.580 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched gold
+2026-02-02 22:29:14.086 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched fund
+127.0.0.1 - - [02/Feb/2026 22:29:14] "GET /fund HTTP/1.1" 200 -
+2026-02-02 22:29:32.622 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched select_fund
+2026-02-02 22:29:32.680 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched A
+2026-02-02 22:29:32.738 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched seven_A
+2026-02-02 22:29:32.754 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched kx
+2026-02-02 22:29:32.852 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched marker
+2026-02-02 22:29:32.939 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched real_time_gold
+2026-02-02 22:29:32.974 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched bk
+2026-02-02 22:29:32.993 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched gold
+2026-02-02 22:29:34.716 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched fund
+127.0.0.1 - - [02/Feb/2026 22:29:34] "GET /fund HTTP/1.1" 200 -
+2026-02-02 22:45:45.409 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched select_fund
+2026-02-02 22:45:45.528 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched seven_A
+2026-02-02 22:45:45.535 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched A
+2026-02-02 22:45:45.555 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched marker
+2026-02-02 22:45:45.605 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched kx
+2026-02-02 22:45:45.612 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched real_time_gold
+2026-02-02 22:45:45.792 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched bk
+2026-02-02 22:45:45.846 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched gold
+2026-02-02 22:45:47.667 | DEBUG    | __main__:fetch_html:417 - ✓ Successfully fetched fund
+127.0.0.1 - - [02/Feb/2026 22:45:47] "GET /fund HTTP/1.1" 200 -

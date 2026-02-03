@@ -1057,7 +1057,7 @@ def get_javascript_code():
                         clearInterval(timeoutChecker);
                         reader.cancel();
                     }
-                }, 5000);
+                }, 8311);
                 
                 // Helper function to detect and render content
                 function renderContent(content) {

@@ -472,6 +472,155 @@ class MaYiFund:
             sortable_columns=[3, 4, 5, 6]
         )
 
+    def get_fund_info(self, fund_code):
+        """获取单个基金的详细信息（API用）"""
+        try:
+            # 检查缓存，如果没有则先获取 fund_key
+            if fund_code not in self.CACHE_MAP:
+                headers = {
+                    "Accept-Language": "zh-CN,zh;q=0.9",
+                    "Connection": "keep-alive",
+                    "Content-Type": "application/json",
+                    "Origin": "https://www.fund123.cn",
+                    "Referer": "https://www.fund123.cn/fund",
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36",
+                    "X-API-Key": "foobar",
+                    "accept": "json"
+                }
+                url = "https://www.fund123.cn/api/fund/searchFund"
+                params = {"_csrf": self._csrf}
+                data = {"fundCode": fund_code}
+                response = self.session.post(url, headers=headers, params=params, json=data, timeout=10, verify=False)
+                if not response.json()["success"]:
+                    return None
+                fund_key = response.json()["fundInfo"]["key"]
+                fund_name = response.json()["fundInfo"]["fundName"]
+            else:
+                fund_key = self.CACHE_MAP[fund_code]["fund_key"]
+                fund_name = self.CACHE_MAP[fund_code]["fund_name"]
+
+            # 获取详细信息
+            return self._fetch_fund_detail(fund_code, fund_key, fund_name)
+        except Exception as e:
+            logger.error(f"获取基金【{fund_code}】信息失败: {e}")
+            return None
+
+    def _fetch_fund_detail(self, fund_code, fund_key, fund_name):
+        """内部方法：获取基金详细数据"""
+        headers = {
+            "Accept-Language": "zh-CN,zh;q=0.9",
+            "Connection": "keep-alive",
+            "Content-Type": "application/json",
+            "Origin": "https://www.fund123.cn",
+            "Referer": "https://www.fund123.cn/fund",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36",
+            "X-API-Key": "foobar",
+            "accept": "json"
+        }
+
+        # 1. 获取日涨幅和净值日期
+        url = f"https://www.fund123.cn/matiaria?fundCode={fund_code}"
+        response = self.session.get(url, headers=headers, timeout=10, verify=False)
+        day_of_growth = re.findall(r'"dayOfGrowth":"(.*?)"', response.text)
+        net_value_date = re.findall(r'"netValueDate":"(.*?)"', response.text)
+        nav = re.findall(r'"nav":"(.*?)"', response.text)
+
+        day_of_growth_val = round(float(day_of_growth[0]), 2) if day_of_growth else None
+        net_value_date_val = net_value_date[0] if net_value_date else None
+        nav_val = nav[0] if nav else None
+
+        # 2. 获取30天趋势
+        url = "https://www.fund123.cn/api/fund/queryFundQuotationCurves"
+        params = {"_csrf": self._csrf}
+        data = {"productId": fund_key, "dateInterval": "ONE_MONTH"}
+        response = self.session.post(url, headers=headers, params=params, json=data, timeout=10, verify=False)
+
+        trend_data = {"up_days": 0, "down_days": 0, "total_days": 0, "total_growth": 0,
+                      "consecutive_up_days": 0, "consecutive_down_days": 0, "latest_trend": None,
+                      "recent_10d": []}
+
+        if response.json()["success"]:
+            points = [x for x in response.json()["points"] if x["type"] == "fund"]
+            if len(points) >= 2:
+                growth_list = []
+                last_rate = points[0]["rate"]
+                for point in points[1:]:
+                    now_rate = point["rate"]
+                    growth = round((now_rate - last_rate) / last_rate * 100, 2) if last_rate != 0 else 0
+                    growth_list.append({"date": point["date"], "growth": growth})
+                    last_rate = now_rate
+
+                growth_list = growth_list[::-1]  # 倒序，最新在前
+                up_days = sum(1 for x in growth_list if x["growth"] > 0)
+                down_days = sum(1 for x in growth_list if x["growth"] < 0)
+                total_growth = round(sum(x["growth"] for x in growth_list), 2)
+
+                # 计算连续涨跌
+                consecutive_up = 0
+                consecutive_down = 0
+                for x in growth_list:
+                    if x["growth"] > 0:
+                        consecutive_up += 1
+                        consecutive_down = 0
+                    elif x["growth"] < 0:
+                        consecutive_down += 1
+                        consecutive_up = 0
+                    else:
+                        consecutive_up = consecutive_down = 0
+
+                latest_trend = "up" if growth_list[0]["growth"] > 0 else "down" if growth_list[0]["growth"] < 0 else "flat"
+
+                trend_data = {
+                    "up_days": up_days,
+                    "down_days": down_days,
+                    "total_days": len(growth_list),
+                    "total_growth": total_growth,
+                    "total_growth_str": f"{total_growth:+.2f}%",
+                    "consecutive_up_days": consecutive_up,
+                    "consecutive_down_days": consecutive_down,
+                    "latest_trend": latest_trend,
+                    "recent_10d": growth_list[:10]
+                }
+
+        # 3. 获取实时估值
+        url = "https://www.fund123.cn/api/fund/queryFundEstimateIntraday"
+        params = {"_csrf": self._csrf}
+        today = datetime.datetime.now().strftime("%Y-%m-%d")
+        tomorrow = (datetime.datetime.now() + datetime.timedelta(days=1)).strftime("%Y-%m-%d")
+        data = {
+            "startTime": today, "endTime": tomorrow, "limit": 200,
+            "productId": fund_key, "format": True, "source": "WEALTHBFFWEB"
+        }
+        response = self.session.post(url, headers=headers, params=params, json=data, timeout=10, verify=False)
+
+        estimate_data = {"growth": None, "growth_str": None, "time": None, "nav": nav_val, "has_data": False}
+        if response.json()["success"] and response.json()["list"]:
+            fund_info = response.json()["list"][-1]
+            estimate_time = datetime.datetime.fromtimestamp(fund_info["time"] / 1000).strftime("%Y-%m-%d %H:%M:%S")
+            growth = round(float(fund_info["forecastGrowth"]) * 100, 2)
+            estimate_nav = fund_info.get("forecastNav", nav_val)
+            estimate_data = {
+                "growth": growth,
+                "growth_str": f"{growth:+.2f}%",
+                "time": estimate_time,
+                "nav": estimate_nav,
+                "has_data": True
+            }
+
+        return {
+            "fund_code": fund_code,
+            "fund_name": fund_name,
+            "query_time": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "estimate": estimate_data,
+            "day_growth": {
+                "value": day_of_growth_val,
+                "value_str": f"{day_of_growth_val:+.2f}%" if day_of_growth_val else None,
+                "net_value_date": net_value_date_val,
+                "nav": nav_val
+            },
+            "trend_30d": trend_data
+        }
+
     @staticmethod
     def select_fund(bk_id=None, is_return=False):
         if not is_return:
