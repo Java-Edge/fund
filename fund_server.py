@@ -416,8 +416,12 @@ def health_check():
     return jsonify({"status": "ok", "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")})
 
 
-@app.route('/api/fund/<fund_code>', methods=['GET'])
+@app.route('/fund/<fund_code>', methods=['GET', 'OPTIONS'])
+@app.route('/api/fund/<fund_code>', methods=['GET', 'OPTIONS'])
 def get_fund_info(fund_code):
+    # 处理 OPTIONS 预检请求
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
     """查询单个基金完整信息"""
     if not re.match(r'^\d{6}$', fund_code):
         return jsonify({"success": False, "error": "基金代码必须为6位数字"}), 400
@@ -436,8 +440,12 @@ def get_fund_info(fund_code):
         return jsonify({"success": False, "error": str(e)}), 500
 
 
-@app.route('/api/fund/estimate/<fund_code>', methods=['GET'])
+@app.route('/fund/estimate/<fund_code>', methods=['GET', 'OPTIONS'])
+@app.route('/api/fund/estimate/<fund_code>', methods=['GET', 'OPTIONS'])
 def get_fund_estimate(fund_code):
+    # 处理 OPTIONS 预检请求
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
     """仅查询基金实时估值（最快）"""
     if not re.match(r'^\d{6}$', fund_code):
         return jsonify({"success": False, "error": "基金代码必须为6位数字"}), 400
@@ -465,6 +473,7 @@ def get_fund_estimate(fund_code):
         return jsonify({"success": False, "error": str(e)}), 500
 
 
+@app.route('/fund/batch', methods=['POST', 'OPTIONS'])
 @app.route('/api/fund/batch', methods=['POST', 'OPTIONS'])
 def batch_query_funds():
     """批量查询基金信息"""
