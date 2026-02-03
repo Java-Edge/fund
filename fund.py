@@ -8,6 +8,7 @@ import random
 import re
 import threading
 import time
+from typing import Optional
 
 import requests
 import urllib3
@@ -17,6 +18,13 @@ from loguru import logger
 from lxml import etree
 from tabulate import tabulate
 
+try:
+    import redis
+    REDIS_AVAILABLE = True
+except ImportError:
+    REDIS_AVAILABLE = False
+    logger.warning("redis package not installed, cache disabled")
+
 from ai_analyzer import AIAnalyzer
 from module_html import get_table_html
 
@@ -24,6 +32,96 @@ from module_html import get_table_html
 load_dotenv()
 
 sem = threading.Semaphore(5)
+
+
+class RedisCache:
+    """Redis 缓存封装"""
+
+    def __init__(self, host: str = 'localhost', port: int = 6379,
+                 db: int = 0, password: Optional[str] = None,
+                 default_ttl: int = 30):
+        self.default_ttl = default_ttl
+        self._redis = None
+        self._enabled = False
+
+        if not REDIS_AVAILABLE:
+            logger.warning("Redis package not available, caching disabled")
+            return
+
+        try:
+            self._redis = redis.Redis(
+                host=host,
+                port=port,
+                db=db,
+                password=password,
+                decode_responses=True,
+                socket_connect_timeout=3,
+                socket_timeout=3
+            )
+            # 测试连接
+            self._redis.ping()
+            self._enabled = True
+            logger.info(f"Redis cache connected: {host}:{port}, TTL: {default_ttl}s")
+        except Exception as e:
+            logger.warning(f"Redis connection failed: {e}, caching disabled")
+            self._redis = None
+            self._enabled = False
+
+    def get(self, key: str) -> Optional[dict]:
+        """获取缓存数据"""
+        if not self._enabled or not self._redis:
+            return None
+        try:
+            data = self._redis.get(key)
+            if data:
+                logger.debug(f"Cache hit: {key}")
+                return json.loads(data)
+            return None
+        except Exception as e:
+            logger.debug(f"Cache get error: {e}")
+            return None
+
+    def set(self, key: str, value: dict, ttl: Optional[int] = None) -> bool:
+        """设置缓存数据"""
+        if not self._enabled or not self._redis:
+            return False
+        try:
+            ttl = ttl or self.default_ttl
+            self._redis.setex(key, ttl, json.dumps(value, ensure_ascii=False))
+            logger.debug(f"Cache set: {key}, TTL: {ttl}s")
+            return True
+        except Exception as e:
+            logger.debug(f"Cache set error: {e}")
+            return False
+
+    def delete(self, key: str) -> bool:
+        """删除缓存"""
+        if not self._enabled or not self._redis:
+            return False
+        try:
+            self._redis.delete(key)
+            return True
+        except Exception as e:
+            logger.debug(f"Cache delete error: {e}")
+            return False
+
+    def clear_pattern(self, pattern: str) -> bool:
+        """按模式清除缓存"""
+        if not self._enabled or not self._redis:
+            return False
+        try:
+            keys = self._redis.keys(pattern)
+            if keys:
+                self._redis.delete(*keys)
+                logger.info(f"Cleared {len(keys)} keys matching: {pattern}")
+            return True
+        except Exception as e:
+            logger.debug(f"Cache clear error: {e}")
+            return False
+
+    @property
+    def enabled(self) -> bool:
+        return self._enabled
 
 urllib3.disable_warnings()
 urllib3.util.ssl_.DEFAULT_CIPHERS = ":".join(
@@ -100,6 +198,23 @@ class MaYiFund:
         self.load_cache()
         self.init()
         self.result = []
+
+        # 初始化 Redis 缓存
+        self._cache = None
+        # 从环境变量读取配置，默认 localhost:6379
+        redis_host = os.getenv('REDIS_HOST', 'localhost')
+        redis_port = int(os.getenv('REDIS_PORT', '6379'))
+        redis_db = int(os.getenv('REDIS_DB', '0'))
+        redis_password = os.getenv('REDIS_PASSWORD') or None
+        redis_ttl = int(os.getenv('REDIS_TTL', '30'))
+
+        self._cache = RedisCache(
+            host=redis_host,
+            port=redis_port,
+            db=redis_db,
+            password=redis_password,
+            default_ttl=redis_ttl
+        )
 
     def load_cache(self):
         if not os.path.exists("cache"):
@@ -473,9 +588,18 @@ class MaYiFund:
         )
 
     def get_fund_info(self, fund_code):
-        """获取单个基金的详细信息（API用）"""
+        """获取单个基金的详细信息（API用），带Redis缓存"""
+        cache_key = f"fund:info:{fund_code}"
+
+        # 1. 先检查Redis缓存
+        if self._cache and self._cache.enabled:
+            cached = self._cache.get(cache_key)
+            if cached:
+                logger.info(f"Redis缓存命中: {fund_code}")
+                return cached
+
         try:
-            # 检查缓存，如果没有则先获取 fund_key
+            # 2. 检查缓存，如果没有则先获取 fund_key
             if fund_code not in self.CACHE_MAP:
                 headers = {
                     "Accept-Language": "zh-CN,zh;q=0.9",
@@ -499,8 +623,15 @@ class MaYiFund:
                 fund_key = self.CACHE_MAP[fund_code]["fund_key"]
                 fund_name = self.CACHE_MAP[fund_code]["fund_name"]
 
-            # 获取详细信息
-            return self._fetch_fund_detail(fund_code, fund_key, fund_name)
+            # 3. 获取详细信息
+            result = self._fetch_fund_detail(fund_code, fund_key, fund_name)
+
+            # 4. 存入Redis缓存
+            if result and self._cache and self._cache.enabled:
+                self._cache.set(cache_key, result)
+                logger.info(f"Redis缓存已写入: {fund_code}")
+
+            return result
         except Exception as e:
             logger.error(f"获取基金【{fund_code}】信息失败: {e}")
             return None
