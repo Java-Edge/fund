@@ -540,47 +540,55 @@ class MaYiFund:
                       "recent_10d": []}
 
         if response.json()["success"]:
-            points = [x for x in response.json()["points"] if x["type"] == "fund"]
+            points = [x for x in response.json()["points"] if x.get("type") == "fund"]
             if len(points) >= 2:
                 growth_list = []
-                last_rate = points[0]["rate"]
+                last_rate = points[0].get("rate")
                 for point in points[1:]:
-                    now_rate = point["rate"]
-                    growth = round((now_rate - last_rate) / last_rate * 100, 2) if last_rate != 0 else 0
-                    growth_list.append({"date": point["date"], "growth": growth})
+                    now_rate = point.get("rate")
+                    point_date = point.get("date")
+                    if now_rate is None or point_date is None:
+                        continue
+                    growth = round((now_rate - last_rate) / last_rate * 100, 2) if last_rate and last_rate != 0 else 0
+                    growth_list.append({"date": point_date, "growth": growth})
                     last_rate = now_rate
 
-                growth_list = growth_list[::-1]  # 倒序，最新在前
-                up_days = sum(1 for x in growth_list if x["growth"] > 0)
-                down_days = sum(1 for x in growth_list if x["growth"] < 0)
-                total_growth = round(sum(x["growth"] for x in growth_list), 2)
+                if not growth_list:
+                    trend_data = {"up_days": 0, "down_days": 0, "total_days": 0, "total_growth": 0,
+                                  "total_growth_str": "0.00%", "consecutive_up_days": 0, "consecutive_down_days": 0,
+                                  "latest_trend": None, "recent_10d": []}
+                else:
+                    growth_list = growth_list[::-1]  # 倒序，最新在前
+                    up_days = sum(1 for x in growth_list if x["growth"] > 0)
+                    down_days = sum(1 for x in growth_list if x["growth"] < 0)
+                    total_growth = round(sum(x["growth"] for x in growth_list), 2)
 
-                # 计算连续涨跌
-                consecutive_up = 0
-                consecutive_down = 0
-                for x in growth_list:
-                    if x["growth"] > 0:
-                        consecutive_up += 1
-                        consecutive_down = 0
-                    elif x["growth"] < 0:
-                        consecutive_down += 1
-                        consecutive_up = 0
-                    else:
-                        consecutive_up = consecutive_down = 0
+                    # 计算连续涨跌
+                    consecutive_up = 0
+                    consecutive_down = 0
+                    for x in growth_list:
+                        if x["growth"] > 0:
+                            consecutive_up += 1
+                            consecutive_down = 0
+                        elif x["growth"] < 0:
+                            consecutive_down += 1
+                            consecutive_up = 0
+                        else:
+                            consecutive_up = consecutive_down = 0
 
-                latest_trend = "up" if growth_list[0]["growth"] > 0 else "down" if growth_list[0]["growth"] < 0 else "flat"
+                    latest_trend = "up" if growth_list[0]["growth"] > 0 else "down" if growth_list[0]["growth"] < 0 else "flat"
 
-                trend_data = {
-                    "up_days": up_days,
-                    "down_days": down_days,
-                    "total_days": len(growth_list),
-                    "total_growth": total_growth,
-                    "total_growth_str": f"{total_growth:+.2f}%",
-                    "consecutive_up_days": consecutive_up,
-                    "consecutive_down_days": consecutive_down,
-                    "latest_trend": latest_trend,
-                    "recent_10d": growth_list[:10]
-                }
+                    trend_data = {
+                        "up_days": up_days,
+                        "down_days": down_days,
+                        "total_days": len(growth_list),
+                        "total_growth": total_growth,
+                        "total_growth_str": f"{total_growth:+.2f}%",
+                        "consecutive_up_days": consecutive_up,
+                        "consecutive_down_days": consecutive_down,
+                        "latest_trend": latest_trend,
+                        "recent_10d": growth_list[:10]
+                    }
 
         # 3. 获取实时估值
         url = "https://www.fund123.cn/api/fund/queryFundEstimateIntraday"
