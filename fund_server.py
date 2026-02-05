@@ -17,6 +17,22 @@ from module_html import get_full_page_html
 # 加载环境变量
 load_dotenv()
 
+# 配置日志：抑制werkzeug的SSL错误噪音
+import logging
+werkzeug_logger = logging.getLogger('werkzeug')
+werkzeug_logger.setLevel(logging.ERROR)  # 只记录ERROR及以上级别
+
+# 添加自定义过滤器来忽略SSL握手错误
+class IgnoreSSLHandshakeFilter(logging.Filter):
+    def filter(self, record):
+        message = record.getMessage()
+        # 过滤包含SSL握手特征的错误日志
+        if any(pattern in message for pattern in ['\\x16\\x03\\x01', 'Bad request syntax', 'Bad request version', 'Bad HTTP/0.9']):
+            return False
+        return True
+
+werkzeug_logger.addFilter(IgnoreSSLHandshakeFilter())
+
 urllib3.disable_warnings()
 urllib3.util.ssl_.DEFAULT_CIPHERS = ":".join(
     [
@@ -43,6 +59,55 @@ app.register_blueprint(holdings_bp)
 # 初始化
 init_default_admin()
 init_holdings_table()
+
+
+# 处理恶意/错误的SSL请求
+@app.before_request
+def detect_ssl_on_http():
+    """检测并拒绝SSL/TLS握手请求（发送到HTTP端口的HTTPS请求）"""
+    if request.environ.get('werkzeug.request'):
+        # 检查原始请求数据是否以TLS握手开始
+        try:
+            if hasattr(request, 'data') and request.data:
+                first_bytes = request.data[:3]
+                if first_bytes == b'\x16\x03\x01':  # TLS ClientHello signature
+                    logger.warning(f"SSL/TLS request detected on HTTP endpoint from {request.remote_addr}")
+                    return jsonify({
+                        "error": "SSL/TLS not supported on this endpoint",
+                        "message": "This server uses HTTP, not HTTPS. Please use http:// instead of https://"
+                    }), 400
+        except:
+            pass
+    return None
+
+
+# 全局错误处理器
+@app.errorhandler(400)
+def handle_bad_request(e):
+    """统一处理400错误，包括SSL握手等恶意请求"""
+    error_description = str(e.description) if hasattr(e, 'description') else str(e)
+
+    # 检测是否为SSL/TLS握手请求
+    if any(indicator in error_description for indicator in ['\\x16\\x03\\x01', 'Bad request', 'Bad HTTP']):
+        logger.warning(f"Rejected malformed/SSL request from {request.remote_addr}")
+        return jsonify({
+            "error": "Bad Request",
+            "message": "Invalid HTTP request. If you're trying to use HTTPS, please use HTTP instead.",
+            "server": "HTTP only (no SSL/TLS)"
+        }), 400
+
+    # 其他400错误正常返回
+    return jsonify({"error": "Bad Request", "message": error_description}), 400
+
+
+@app.errorhandler(Exception)
+def handle_unexpected_error(e):
+    """捕获未处理的异常，防止服务器崩溃"""
+    logger.error(f"Unexpected error: {type(e).__name__}: {str(e)}")
+    return jsonify({
+        "error": "Internal Server Error",
+        "message": "An unexpected error occurred"
+    }), 500
 
 
 # 添加 CORS 支持
