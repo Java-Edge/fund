@@ -33,6 +33,17 @@ urllib3.util.ssl_.DEFAULT_CIPHERS = ":".join(
 app = Flask(__name__)
 analyzer = AIAnalyzer()
 
+# 导入并注册蓝图
+from auth import auth_bp, init_default_admin
+from holdings import holdings_bp, init_holdings_table
+
+app.register_blueprint(auth_bp)
+app.register_blueprint(holdings_bp)
+
+# 初始化
+init_default_admin()
+init_holdings_table()
+
 
 # 添加 CORS 支持
 @app.after_request
