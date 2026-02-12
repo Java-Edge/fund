@@ -39,7 +39,7 @@ class RedisCache:
 
     def __init__(self, host: str = 'localhost', port: int = 6379,
                  db: int = 0, password: Optional[str] = None,
-                 default_ttl: int = 30):
+                 default_ttl: int = 45):
         self.default_ttl = default_ttl
         self._redis = None
         self._enabled = False
@@ -88,7 +88,7 @@ class RedisCache:
         try:
             ttl = ttl or self.default_ttl
             self._redis.setex(key, ttl, json.dumps(value, ensure_ascii=False))
-            logger.debug(f"Cache set: {key}, TTL: {ttl}s")
+            # logger.debug(f"Cache set: {key}, TTL: {ttl}s")
             return True
         except Exception as e:
             logger.debug(f"Cache set error: {e}")
@@ -595,7 +595,7 @@ class MaYiFund:
         if self._cache and self._cache.enabled:
             cached = self._cache.get(cache_key)
             if cached:
-                logger.info(f"Redis缓存命中: {fund_code}")
+                # logger.info(f"Redis缓存命中: {fund_code}")
                 return cached
 
         try:
