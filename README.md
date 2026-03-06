@@ -1,5 +1,12 @@
 # 基金市场辅助工具(实时估值正常显示)
 
+
+fund（数据监控层）
+  ├── 多源实时数据抓取
+  ├── Web 展示界面
+  └── 用户认证 + 持仓管理
+  
+
 ![Star History Chart](https://api.star-history.com/svg?repos=lanZzV/fund&type=Date)
 
 一个功能强大的金融市场实时监控工具，支持命令行和Web两种模式，可追踪基金估值、市场指数、黄金价格、行业板块和市场快讯。

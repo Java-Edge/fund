@@ -24,12 +24,19 @@ werkzeug_logger.setLevel(logging.ERROR)  # 只记录ERROR及以上级别
 
 # 添加自定义过滤器来忽略SSL握手错误
 class IgnoreSSLHandshakeFilter(logging.Filter):
+    # TLS ClientHello 特征：字面转义串 / 常见 400 错误前缀
+    _PATTERNS = (
+        r'\x16\x03\x01',           # 实际二进制转义（Python repr）
+        '\\x16\\x03\\x01',         # 日志中的字符串形式
+        'Bad request syntax',
+        'Bad request version',
+        'Bad HTTP/0.9',
+        'Bad HTTP/1.0',
+    )
+
     def filter(self, record):
-        message = record.getMessage()
-        # 过滤包含SSL握手特征的错误日志
-        if any(pattern in message for pattern in ['\\x16\\x03\\x01', 'Bad request syntax', 'Bad request version', 'Bad HTTP/0.9']):
-            return False
-        return True
+        msg = record.getMessage()
+        return not any(p in msg for p in self._PATTERNS)
 
 werkzeug_logger.addFilter(IgnoreSSLHandshakeFilter())
 
@@ -596,6 +603,107 @@ def batch_query_funds():
         })
     except Exception as e:
         logger.error(f"批量查询基金失败: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route('/api/fund/realtime/<fund_code>', methods=['GET', 'OPTIONS'])
+@app.route('/fund/realtime/<fund_code>', methods=['GET', 'OPTIONS'])
+def get_fund_realtime(fund_code):
+    """
+    天天基金网实时估算净值接口（单只基金）
+    ---
+    GET /api/fund/realtime/{fund_code}
+
+    响应字段：
+      fund_code        基金代码
+      fund_name        基金名称
+      nav_date         上一交易日净值日期
+      nav              上一交易日单位净值（永远非 null）
+      estimate_nav     今日实时估算净值（非交易时间为 null）
+      estimate_change  估算涨跌幅（如 "-2.81"）
+      estimate_change_str  格式化涨跌幅（如 "-2.81%"）
+      estimate_time    估算时间
+      source           数据来源
+    """
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+
+    if not re.match(r'^\d{6}$', fund_code):
+        return jsonify({"success": False, "error": "基金代码必须为6位数字"}), 400
+
+    try:
+        my_fund = fund.MaYiFund()
+        result = my_fund.get_fund_realtime_estimate(fund_code)
+
+        if result is None:
+            return jsonify({
+                "success": False,
+                "error": f"基金 {fund_code} 查询失败，请确认代码是否正确"
+            }), 404
+
+        return jsonify({"success": True, **result})
+
+    except Exception as e:
+        logger.error(f"[realtime] 查询基金 {fund_code} 失败: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route('/api/fund/realtime/batch', methods=['POST', 'OPTIONS'])
+@app.route('/fund/realtime/batch', methods=['POST', 'OPTIONS'])
+def get_fund_realtime_batch():
+    """
+    天天基金网实时估算净值批量接口
+    ---
+    POST /api/fund/realtime/batch
+    Body: {"codes": ["000001", "110011", ...]}  最多50只
+
+    响应：
+      success  bool
+      count    成功条数
+      data     list[fund_realtime_result]
+      errors   list[{code, error}] | null
+    """
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+
+    body = request.get_json(silent=True)
+    if not body or 'codes' not in body:
+        return jsonify({"success": False, "error": "缺少 codes 参数"}), 400
+
+    codes = body['codes']
+    if not isinstance(codes, list) or len(codes) == 0:
+        return jsonify({"success": False, "error": "codes 必须是非空数组"}), 400
+
+    if len(codes) > 50:
+        return jsonify({"success": False, "error": "批量查询最多支持50个基金"}), 400
+
+    invalid = [c for c in codes if not re.match(r'^\d{6}$', str(c))]
+    if invalid:
+        return jsonify({
+            "success": False,
+            "error": f"无效基金代码: {', '.join(invalid)}，所有代码必须为6位数字"
+        }), 400
+
+    try:
+        my_fund = fund.MaYiFund()
+        raw_results = my_fund.get_fund_realtime_estimate_batch(codes)
+
+        data, errors = [], []
+        for code, res in zip(codes, raw_results):
+            if res is not None:
+                data.append(res)
+            else:
+                errors.append({"code": code, "error": "查询失败或基金代码不存在"})
+
+        return jsonify({
+            "success": True,
+            "count": len(data),
+            "data": data,
+            "errors": errors if errors else None,
+        })
+
+    except Exception as e:
+        logger.error(f"[realtime/batch] 批量查询失败: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
 
 

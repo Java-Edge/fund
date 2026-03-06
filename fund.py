@@ -587,6 +587,128 @@ class MaYiFund:
             sortable_columns=[3, 4, 5, 6]
         )
 
+    # ------------------------------------------------------------------ #
+    #  天天基金网 — 实时估算净值接口
+    #  GET https://fundgz.1234567.com.cn/js/{基金代码}.js
+    #  返回 jsonpgz({...}) 格式，字段说明：
+    #    fundcode  基金代码
+    #    name      基金名称
+    #    jzrq      上一交易日净值日期（永远非 null）
+    #    dwjz      上一交易日单位净值（永远非 null）
+    #    gsz       当日盘中实时估算净值（交易时间实时更新）
+    #    gszzl     估算涨跌幅 %
+    #    gztime    估算时间（当天交易时间更新）
+    # ------------------------------------------------------------------ #
+    _TIANTIAN_GZ_URL = "https://fundgz.1234567.com.cn/js/{code}.js"
+    _TIANTIAN_HEADERS = {
+        "Referer": "https://fund.eastmoney.com/",
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/124.0.0.0 Safari/537.36"
+        ),
+    }
+
+    def get_fund_realtime_estimate(self, fund_code: str) -> Optional[dict]:
+        """
+        调用天天基金网实时估算接口，返回结构化数据。
+
+        返回示例::
+
+            {
+                "fund_code":  "000001",
+                "fund_name":  "华夏成长混合",
+                "nav_date":   "2026-03-02",      # 上一交易日净值日期
+                "nav":        "1.1470",           # 上一交易日单位净值（永远非 null）
+                "estimate_nav":    "1.1148",      # 今日实时估算净值（null 表示非交易时间）
+                "estimate_change": "-2.81",       # 估算涨跌幅 %（null 同上）
+                "estimate_time":   "2026-03-03 13:05",  # 估算时间
+                "source": "fundgz.1234567.com.cn"
+            }
+
+        非交易时间 gsz/gszzl/gztime 可能为空字符串，此时统一返回 None。
+        """
+        cache_key = f"fund:gz:{fund_code}"
+
+        # Redis 短缓存（30 s），避免高频同一基金重复请求
+        if self._cache and self._cache.enabled:
+            cached = self._cache.get(cache_key)
+            if cached:
+                return cached
+
+        try:
+            url = self._TIANTIAN_GZ_URL.format(code=fund_code)
+            resp = self.session.get(
+                url, headers=self._TIANTIAN_HEADERS, timeout=8, verify=False
+            )
+            resp.raise_for_status()
+
+            # 解析 jsonpgz({...})
+            raw = resp.text.strip()
+            m = re.match(r"jsonpgz\((.*)\)\s*;?\s*$", raw, re.DOTALL)
+            if not m:
+                logger.error(f"[gz] 解析失败，原始响应: {raw[:120]}")
+                return None
+
+            payload: dict = json.loads(m.group(1))
+
+            def _or_none(v):
+                """空字符串 / 空白 → None"""
+                s = str(v).strip() if v is not None else ""
+                return s if s else None
+
+            result = {
+                "fund_code":       payload.get("fundcode", fund_code),
+                "fund_name":       payload.get("name", ""),
+                "nav_date":        _or_none(payload.get("jzrq")),   # 上一交易日净值日期
+                "nav":             _or_none(payload.get("dwjz")),   # 上一交易日单位净值
+                "estimate_nav":    _or_none(payload.get("gsz")),    # 今日实时估算净值
+                "estimate_change": _or_none(payload.get("gszzl")),  # 估算涨跌幅 %
+                "estimate_time":   _or_none(payload.get("gztime")), # 估算时间
+                "source": "fundgz.1234567.com.cn",
+            }
+
+            # 格式化涨跌幅字符串（带正负号）
+            if result["estimate_change"] is not None:
+                try:
+                    val = float(result["estimate_change"])
+                    result["estimate_change_str"] = f"+{val:.2f}%" if val >= 0 else f"{val:.2f}%"
+                except ValueError:
+                    result["estimate_change_str"] = result["estimate_change"]
+            else:
+                result["estimate_change_str"] = None
+
+            # 写入 Redis 缓存
+            if self._cache and self._cache.enabled:
+                self._cache.set(cache_key, result, ttl=30)
+
+            return result
+
+        except Exception as e:
+            logger.error(f"[gz] 获取基金【{fund_code}】实时估算失败: {e}")
+            return None
+
+    def get_fund_realtime_estimate_batch(self, fund_codes: list) -> list:
+        """
+        并发批量获取多只基金的实时估算净值。
+        返回列表，每项为 get_fund_realtime_estimate() 的结果（失败时为 None）。
+        """
+        results = [None] * len(fund_codes)
+
+        def _fetch(idx, code):
+            results[idx] = self.get_fund_realtime_estimate(code)
+
+        threads = [
+            threading.Thread(target=_fetch, args=(i, code))
+            for i, code in enumerate(fund_codes)
+        ]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        return results
+
     def get_fund_info(self, fund_code):
         """获取单个基金的详细信息（API用），带Redis缓存"""
         cache_key = f"fund:info:{fund_code}"
