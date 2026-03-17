@@ -29,30 +29,49 @@ def get_mysql_config():
 _db_pool = None
 
 def get_db_connection():
-    """获取数据库连接"""
+    """获取数据库连接（带健康检查和重连机制）"""
     global _db_pool
     if _db_pool is None:
-        try:
-            import pymysql
-            from pymysql.cursors import DictCursor
-            
-            config = get_mysql_config()
-            logger.info(f"连接 MySQL: {config['host']}:{config['port']}/{config['database']}")
-            _db_pool = pymysql.connect(
-                host=config['host'],
-                port=config['port'],
-                user=config['user'],
-                password=config['password'],
-                database=config['database'],
-                charset=config['charset'],
-                cursorclass=DictCursor,
-                autocommit=True
-            )
-            logger.info("MySQL connected successfully")
-        except Exception as e:
-            logger.error(f"MySQL 连接失败: {e}")
-            return None
+        return _create_connection()
+    
+    # 检查连接是否有效
+    try:
+        _db_pool.ping(reconnect=True)
+    except Exception:
+        # 连接已失效，重新创建
+        logger.warning("MySQL 连接已失效，尝试重新连接...")
+        _db_pool = None
+        return _create_connection()
+    
     return _db_pool
+
+
+def _create_connection():
+    """创建新的数据库连接"""
+    try:
+        import pymysql
+        from pymysql.cursors import DictCursor
+        
+        config = get_mysql_config()
+        logger.info(f"连接 MySQL: {config['host']}:{config['port']}/{config['database']}")
+        _db_pool = pymysql.connect(
+            host=config['host'],
+            port=config['port'],
+            user=config['user'],
+            password=config['password'],
+            database=config['database'],
+            charset=config['charset'],
+            cursorclass=DictCursor,
+            autocommit=True,
+            connect_timeout=10,
+            read_timeout=30,
+            write_timeout=30
+        )
+        logger.info("MySQL connected successfully")
+        return _db_pool
+    except Exception as e:
+        logger.error(f"MySQL 连接失败: {e}")
+        return None
 
 def init_holdings_table():
     """初始化持仓表"""
