@@ -13,15 +13,16 @@ from loguru import logger
 # 创建蓝图
 holdings_bp = Blueprint('holdings', __name__, url_prefix='/api/holdings')
 
-# MySQL 固定配置
+# MySQL 配置（从环境变量读取）
 def get_mysql_config():
     """获取 MySQL 配置"""
+    import os
     return {
-        'host': 'localhost',
-        'port': 3306,
-        'user': 'root',
-        'password': '123456',
-        'database': 'jijin_db',
+        'host': os.getenv('MYSQL_HOST', 'localhost'),
+        'port': int(os.getenv('MYSQL_PORT', '3306')),
+        'user': os.getenv('MYSQL_USER', 'root'),
+        'password': os.getenv('MYSQL_PASSWORD', ''),
+        'database': os.getenv('MYSQL_DATABASE', 'jijin_db'),
         'charset': 'utf8'
     }
 
