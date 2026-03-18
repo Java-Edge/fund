@@ -161,6 +161,117 @@ http://localhost:8311/fund?add=001618,161725
 http://localhost:8311/fund?delete=001618
 ```
 
+**查询单个基金完整信息**
+```http
+GET /api/fund/{fund_code}
+```
+
+响应示例：
+```json
+{
+  "success": true,
+  "fund_code": "001618",
+  "fund_name": "天弘沪深300ETF联接A",
+  "query_time": "2026-02-02 14:30:25",
+  "estimate": {
+    "growth": 1.25,
+    "growth_str": "+1.25%",
+    "time": "2026-02-02 14:29:00",
+    "nav": "1.5234",
+    "has_data": true
+  },
+  "day_growth": {
+    "value": -0.50,
+    "value_str": "-0.50%",
+    "net_value_date": "2026-02-01"
+  },
+  "trend_30d": {
+    "up_days": 18,
+    "down_days": 12,
+    "total_days": 30,
+    "total_growth": 5.32,
+    "total_growth_str": "+5.32%",
+    "consecutive_up_days": 3,
+    "consecutive_down_days": 0,
+    "latest_trend": "up",
+    "recent_10d": [
+      {"date": "2026-02-01", "growth": -0.50},
+      {"date": "2026-01-31", "growth": 1.20}
+    ]
+  }
+}
+```
+
+**仅查询实时估值**
+```http
+GET /api/fund/estimate/{fund_code}
+```
+
+响应示例：
+```json
+{
+  "success": true,
+  "fund_code": "001618",
+  "fund_name": "天弘沪深300ETF联接A",
+  "estimate_growth": 1.25,
+  "estimate_growth_str": "+1.25%",
+  "estimate_time": "2026-02-02 14:29:00",
+  "has_estimate": true
+}
+```
+
+**批量查询基金**
+```http
+POST /api/fund/batch
+Content-Type: application/json
+
+{
+  "codes": ["001618", "161725", "110011"]
+}
+```
+
+响应示例：
+```json
+{
+  "success": true,
+  "count": 3,
+  "data": [...],
+  "errors": null
+}
+```
+
+**健康检查**
+```http
+GET /health
+```
+
+**调用示例**
+```bash
+curl http://localhost:8311/api/fund/001618
+
+curl http://localhost:8311/api/fund/estimate/001618
+
+curl -X POST http://localhost:8311/api/fund/batch \
+  -H "Content-Type: application/json" \
+  -d '{"codes":["001618","161725"]}'
+```
+
+**错误码**
+
+| HTTP状态码 | 说明 |
+|-----------|------|
+| 200 | 请求成功 |
+| 400 | 请求参数错误 |
+| 404 | 基金不存在 |
+| 500 | 服务器内部错误 |
+
+**注意事项**
+
+1. 基金代码必须为6位数字。
+2. 估值数据通常仅在交易时间段内有效。
+3. 非交易时间可能返回 `has_estimate: false`。
+4. `/api/fund/batch` 最多支持20个基金。
+
 #### Web功能特性
 - 所有数据表格化展示
 - 支持点击表头排序（升序/降序）

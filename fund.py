@@ -15,7 +15,6 @@ import urllib3
 from curl_cffi import requests as curl_requests
 from dotenv import load_dotenv
 from loguru import logger
-from lxml import etree
 from tabulate import tabulate
 
 try:
@@ -74,7 +73,7 @@ class RedisCache:
         try:
             data = self._redis.get(key)
             if data:
-                logger.debug(f"Cache hit: {key}")
+                # logger.debug(f"Cache hit: {key}")
                 return json.loads(data)
             return None
         except Exception as e:
@@ -751,7 +750,7 @@ class MaYiFund:
             # 4. 存入Redis缓存
             if result and self._cache and self._cache.enabled:
                 self._cache.set(cache_key, result)
-                logger.info(f"Redis缓存已写入: {fund_code}")
+                # logger.info(f"Redis缓存已写入: {fund_code}")
 
             return result
         except Exception as e:

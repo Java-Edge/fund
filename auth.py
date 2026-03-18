@@ -2,12 +2,11 @@
 认证管理 API
 提供用户申请、登录、审核等功能，数据存储在 Redis
 """
-from flask import Blueprint, request, jsonify
 import json
 import time
 from datetime import datetime
-from typing import Optional
 
+from flask import Blueprint, request, jsonify
 from loguru import logger
 
 # 创建蓝图

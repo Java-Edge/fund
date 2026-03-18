@@ -6,3 +6,8 @@ build/
 # claude code目录
 .claude/settings.local.json
 __pycache__/
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.pyc

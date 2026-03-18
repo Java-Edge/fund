@@ -2,12 +2,9 @@
 持仓管理 API
 提供用户持仓的增删改查功能，数据存储在 MySQL
 """
-from flask import Blueprint, request, jsonify
-import json
 import time
-from datetime import datetime
-from typing import Optional, List, Dict, Any
 
+from flask import Blueprint, request, jsonify
 from loguru import logger
 
 # 创建蓝图
