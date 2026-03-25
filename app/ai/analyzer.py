@@ -5,7 +5,7 @@ from loguru import logger
 from app.ai.context_builder import build_fast_context, build_standard_context
 from app.ai.deep_research import run_deep_research
 from app.ai.llm import init_langchain_llm
-from app.ai.prompts import build_fast_prompt, build_standard_prompts
+from app.ai.prompts import build_fast_prompt, build_standard_prompts, get_fast_rules, get_standard_rules
 from app.ai.reporting import log_analysis_section, save_report
 from app.ai.text_utils import clean_ansi_codes, format_text, strip_markdown
 
@@ -32,19 +32,20 @@ class AIAnalyzer:
 
             context = build_standard_context(data_collector)
             prompts = build_standard_prompts()
+            standard_rules = get_standard_rules()
             output_parser = StrOutputParser()
 
             logger.info("正在进行市场趋势分析...")
-            trend_analysis = (prompts["trend"] | llm | output_parser).invoke(context)
+            trend_analysis = (prompts["trend"] | llm | output_parser).invoke({**context, "analysis_rules": standard_rules})
 
             logger.info("正在进行板块机会分析...")
-            sector_analysis = (prompts["sector"] | llm | output_parser).invoke(context)
+            sector_analysis = (prompts["sector"] | llm | output_parser).invoke({**context, "analysis_rules": standard_rules})
 
             logger.info("正在进行基金组合分析...")
-            portfolio_analysis = (prompts["portfolio"] | llm | output_parser).invoke(context)
+            portfolio_analysis = (prompts["portfolio"] | llm | output_parser).invoke({**context, "analysis_rules": standard_rules})
 
             logger.info("正在进行风险分析...")
-            risk_analysis = (prompts["risk"] | llm | output_parser).invoke(context)
+            risk_analysis = (prompts["risk"] | llm | output_parser).invoke({**context, "analysis_rules": standard_rules})
 
             markdown_content = f"""# AI市场深度分析报告
 
@@ -150,7 +151,9 @@ class AIAnalyzer:
 
             context = build_fast_context(data_collector)
             output_parser = StrOutputParser()
-            analysis_result = (build_fast_prompt() | llm | output_parser).invoke(context)
+            fast_prompt = build_fast_prompt()
+            fast_rules = get_fast_rules()
+            analysis_result = (fast_prompt | llm | output_parser).invoke({**context, "analysis_rules": fast_rules})
 
             markdown_content = f"""# 📊 AI快速市场分析报告
 

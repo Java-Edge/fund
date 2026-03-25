@@ -1,5 +1,44 @@
 from langchain_core.prompts import ChatPromptTemplate, PromptTemplate
 
+from app.ai.rules_loader import load_rules
+
+
+def _join_rules(*filenames: str) -> str:
+    sections = [load_rules(filename) for filename in filenames]
+    return "\n\n".join(section for section in sections if section)
+
+
+def get_standard_rules() -> str:
+    return _join_rules(
+        "core_principles.md",
+        "entry_rules.md",
+        "reduction_rules.md",
+        "position_sizing_rules.md",
+        "risk_exceptions.md",
+        "output_format_rules.md",
+    )
+
+
+def get_fast_rules() -> str:
+    return _join_rules(
+        "core_principles.md",
+        "entry_rules.md",
+        "position_sizing_rules.md",
+        "risk_exceptions.md",
+        "output_format_rules.md",
+    )
+
+
+def get_deep_rules() -> str:
+    return _join_rules(
+        "core_principles.md",
+        "entry_rules.md",
+        "reduction_rules.md",
+        "position_sizing_rules.md",
+        "risk_exceptions.md",
+        "output_format_rules.md",
+    )
+
 
 def build_standard_prompts() -> dict[str, ChatPromptTemplate]:
     return {
@@ -35,6 +74,9 @@ def build_standard_prompts() -> dict[str, ChatPromptTemplate]:
 5. 对比国内外市场表现，指出关键影响因素
 6. 分析金价走势对市场的影响
 
+【分析规则】
+{analysis_rules}
+
 请用专业、客观的语言输出，使用markdown格式（可使用##、###标题，**加粗**，列表，表格等），输出结构化、易读的专业分析报告。"""),
         ]),
         "sector": ChatPromptTemplate.from_messages([
@@ -60,6 +102,9 @@ def build_standard_prompts() -> dict[str, ChatPromptTemplate]:
 4. 提示哪些板块值得重点关注，给出配置建议
 5. 分析弱势板块是否存在反转机会
 
+【分析规则】
+{analysis_rules}
+
 请用专业、深入的语言输出，使用markdown格式（可使用##、###标题，**加粗**，列表，表格等），输出结构化、易读的专业分析报告。"""),
         ]),
         "portfolio": ChatPromptTemplate.from_messages([
@@ -84,6 +129,9 @@ def build_standard_prompts() -> dict[str, ChatPromptTemplate]:
 3. 给出具体的调仓建议（增持/减持/持有）
 4. 对表现优异的基金，分析背后原因和可持续性
 5. 提示仓位配置和风险敞口的优化方向
+
+【分析规则】
+{analysis_rules}
 
 请给出具体、可操作的建议，使用markdown格式（可使用##、###标题，**加粗**，列表，表格等），输出结构化、易读的专业分析报告。"""),
         ]),
@@ -116,6 +164,9 @@ def build_standard_prompts() -> dict[str, ChatPromptTemplate]:
 3. 评估持仓基金的风险暴露
 4. 给出风险防控建议和应对策略
 5. 提示需要关注的风险信号（包括技术面和资金面）
+
+【分析规则】
+{analysis_rules}
 
 请客观、谨慎地提示风险，使用markdown格式（可使用##、###标题，**加粗**，列表，表格等），输出结构化、易读的专业分析报告。"""),
         ]),
@@ -152,6 +203,9 @@ def build_fast_prompt() -> ChatPromptTemplate:
 
 ## 4. 风险提示（80字）
 提示当前主要风险点和应对策略。
+
+【快速分析规则】
+{analysis_rules}
 
 输出要求：使用markdown格式，简洁明了，要点突出。"""),
     ])
@@ -243,6 +297,9 @@ def build_react_prompt(current_date: str) -> PromptTemplate:
 - 确保报告**字数达到10000字以上**，内容详实、数据充分、建议具体
 - 充分提示风险，避免过度乐观或悲观
 - 对于网络搜索获得的信息，要以markdown格式给出来源地址 `[标题](URL)`，以增强可信性
+
+【深度研究规则】
+{analysis_rules}
 
 使用以下格式：
 
