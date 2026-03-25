@@ -203,13 +203,13 @@ class MaYiFund:
         if not os.path.exists("cache"):
             os.mkdir("cache")
         if os.path.exists("cache/fund_map.json"):
-            with open("cache/fund_map.json", "r", encoding="gbk") as f:
+            with open("cache/fund_map.json", "r", encoding="utf8") as f:
                 self.CACHE_MAP = json.load(f)
         # if self.CACHE_MAP:
         #     logger.debug(f"加载 {len(self.CACHE_MAP)} 个基金代码缓存成功")
 
     def save_cache(self):
-        with open("cache/fund_map.json", "w", encoding="gbk") as f:
+        with open("cache/fund_map.json", "w", encoding="utf8") as f:
             json.dump(self.CACHE_MAP, f, ensure_ascii=False, indent=4)
 
     def init(self):

@@ -4,6 +4,8 @@ from typing import Any, TypeVar
 from flask import Response, jsonify
 from pydantic import BaseModel, ValidationError
 
+from app.core.errors import AppError
+
 ModelT = TypeVar("ModelT", bound=BaseModel)
 
 
@@ -59,13 +61,9 @@ def validate_model(
         ) from exc
 
 
-class RequestValidationError(ValueError):
+class RequestValidationError(AppError):
     def __init__(self, message: str, *, status_code: int = 400, success: bool | None = None, field: str = "error"):
-        super().__init__(message)
-        self.message = message
-        self.status_code = status_code
-        self.success = success
-        self.field = field
+        super().__init__(message, status_code=status_code, success=success, field=field)
 
 
 def with_error_boundary(
@@ -79,7 +77,7 @@ def with_error_boundary(
 ) -> tuple[Response, int] | Response:
     try:
         return func()
-    except RequestValidationError as exc:
+    except AppError as exc:
         return error_response(exc.message, exc.status_code, success=exc.success, field=exc.field)
     except Exception as exc:
         logger.error(f"{log_message}: {exc}")
