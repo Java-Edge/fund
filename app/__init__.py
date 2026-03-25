@@ -2,6 +2,6 @@ from flask import Flask
 
 
 def create_app() -> Flask:
-    from fund_server import create_app as legacy_create_app
+    from app.factory import create_app as app_factory
 
-    return legacy_create_app()
+    return app_factory()

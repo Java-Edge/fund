@@ -1,16 +1,14 @@
-import importlib
 import threading
 from typing import Any
 
 from loguru import logger
 
-import fund
+from app.services.fund_provider import create_fund
 from module_html import get_full_page_html
 
 
 def get_fund_info_service(fund_code: str) -> dict[str, Any] | None:
-    importlib.reload(fund)
-    my_fund = fund.MaYiFund()
+    my_fund = create_fund(reload_module=True)
     return my_fund.get_fund_info(fund_code)
 
 
@@ -29,8 +27,7 @@ def get_fund_estimate_service(fund_code: str) -> dict[str, Any] | None:
 
 
 def batch_query_funds_service(codes: list[str]) -> tuple[list[dict[str, Any]], list[dict[str, str]]]:
-    importlib.reload(fund)
-    my_fund = fund.MaYiFund()
+    my_fund = create_fund(reload_module=True)
 
     results: list[dict[str, Any]] = []
     errors: list[dict[str, str]] = []
@@ -47,12 +44,12 @@ def batch_query_funds_service(codes: list[str]) -> tuple[list[dict[str, Any]], l
 
 
 def get_fund_realtime_service(fund_code: str) -> dict[str, Any] | None:
-    my_fund = fund.MaYiFund()
+    my_fund = create_fund()
     return my_fund.get_fund_realtime_estimate(fund_code)
 
 
 def get_fund_realtime_batch_service(codes: list[str]) -> tuple[list[dict[str, Any]], list[dict[str, str]]]:
-    my_fund = fund.MaYiFund()
+    my_fund = create_fund()
     raw_results = my_fund.get_fund_realtime_estimate_batch(codes)
 
     data: list[dict[str, Any]] = []
@@ -66,14 +63,12 @@ def get_fund_realtime_batch_service(codes: list[str]) -> tuple[list[dict[str, An
 
 
 def get_sector_funds_service(bk_id: str | None) -> str:
-    importlib.reload(fund)
-    my_fund = fund.MaYiFund()
+    my_fund = create_fund(reload_module=True)
     return my_fund.select_fund_html(bk_id=bk_id)
 
 
 def render_fund_dashboard(add: str | None, delete: str | None) -> str:
-    importlib.reload(fund)
-    my_fund = fund.MaYiFund()
+    my_fund = create_fund(reload_module=True)
     if add:
         my_fund.add_code(add)
     if delete:

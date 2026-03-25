@@ -13,9 +13,10 @@ from typing import Optional
 import requests
 import urllib3
 from curl_cffi import requests as curl_requests
-from dotenv import load_dotenv
 from loguru import logger
 from tabulate import tabulate
+
+from app.core.config import get_redis_cache_config
 
 try:
     import redis
@@ -26,9 +27,6 @@ except ImportError:
 
 from ai_analyzer import AIAnalyzer
 from module_html import get_table_html
-
-# 加载环境变量
-load_dotenv()
 
 sem = threading.Semaphore(5)
 
@@ -199,21 +197,7 @@ class MaYiFund:
         self.result = []
 
         # 初始化 Redis 缓存
-        self._cache = None
-        # 从环境变量读取配置，默认 localhost:6379
-        redis_host = os.getenv('REDIS_HOST', 'localhost')
-        redis_port = int(os.getenv('REDIS_PORT', '6379'))
-        redis_db = int(os.getenv('REDIS_DB', '0'))
-        redis_password = os.getenv('REDIS_PASSWORD') or None
-        redis_ttl = int(os.getenv('REDIS_TTL', '30'))
-
-        self._cache = RedisCache(
-            host=redis_host,
-            port=redis_port,
-            db=redis_db,
-            password=redis_password,
-            default_ttl=redis_ttl
-        )
+        self._cache = RedisCache(**get_redis_cache_config())
 
     def load_cache(self):
         if not os.path.exists("cache"):

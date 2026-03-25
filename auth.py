@@ -9,22 +9,10 @@ from datetime import datetime
 from flask import Blueprint, request, jsonify
 from loguru import logger
 
+from app.core.config import get_redis_config
+
 # 创建蓝图
 auth_bp = Blueprint('auth', __name__, url_prefix='/api/auth')
-
-# 从环境变量读取 Redis 配置，与 fund.py 保持一致
-def get_redis_config():
-    """获取 Redis 配置"""
-    import os
-    return {
-        'host': os.getenv('REDIS_HOST', 'localhost'),
-        'port': int(os.getenv('REDIS_PORT', '6379')),
-        'db': int(os.getenv('REDIS_DB', '0')),
-        'password': os.getenv('REDIS_PASSWORD') or None,
-        'decode_responses': True,
-        'socket_connect_timeout': 3,
-        'socket_timeout': 3
-    }
 
 # 全局 Redis 连接
 _redis_client = None
