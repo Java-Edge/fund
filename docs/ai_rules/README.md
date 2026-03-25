@@ -16,3 +16,15 @@
 - 新增交易策略时，优先决定它属于哪一类规则，再追加到对应文档。
 - 不要先改 Python prompt；只有规则装配逻辑变化时才改代码。
 - 如果规则需要让 Codex 直接遵循，记得同步检查专用 skill。
+
+## 统一规则格式
+
+请优先参考 [rule_template.md](/Users/javaedge/soft/PyCharmProjects/fund/docs/ai_rules/rule_template.md)。
+
+推荐每条规则都按以下字段写：
+
+- 规则名称
+- 触发条件
+- 证据要求
+- 输出限制
+- 风险提示
