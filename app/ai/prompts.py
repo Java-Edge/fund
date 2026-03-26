@@ -77,6 +77,8 @@ def build_standard_prompts() -> dict[str, ChatPromptTemplate]:
 【分析规则】
 {analysis_rules}
 
+{prompt_suffix}
+
 请用专业、客观的语言输出，使用markdown格式（可使用##、###标题，**加粗**，列表，表格等），输出结构化、易读的专业分析报告。"""),
         ]),
         "sector": ChatPromptTemplate.from_messages([
@@ -105,6 +107,8 @@ def build_standard_prompts() -> dict[str, ChatPromptTemplate]:
 【分析规则】
 {analysis_rules}
 
+{prompt_suffix}
+
 请用专业、深入的语言输出，使用markdown格式（可使用##、###标题，**加粗**，列表，表格等），输出结构化、易读的专业分析报告。"""),
         ]),
         "portfolio": ChatPromptTemplate.from_messages([
@@ -132,6 +136,8 @@ def build_standard_prompts() -> dict[str, ChatPromptTemplate]:
 
 【分析规则】
 {analysis_rules}
+
+{prompt_suffix}
 
 请给出具体、可操作的建议，使用markdown格式（可使用##、###标题，**加粗**，列表，表格等），输出结构化、易读的专业分析报告。"""),
         ]),
@@ -167,6 +173,8 @@ def build_standard_prompts() -> dict[str, ChatPromptTemplate]:
 
 【分析规则】
 {analysis_rules}
+
+{prompt_suffix}
 
 请客观、谨慎地提示风险，使用markdown格式（可使用##、###标题，**加粗**，列表，表格等），输出结构化、易读的专业分析报告。"""),
         ]),
@@ -206,6 +214,8 @@ def build_fast_prompt() -> ChatPromptTemplate:
 
 【快速分析规则】
 {analysis_rules}
+
+{prompt_suffix}
 
 输出要求：使用markdown格式，简洁明了，要点突出。"""),
     ])
@@ -300,6 +310,8 @@ def build_react_prompt(current_date: str) -> PromptTemplate:
 
 【深度研究规则】
 {analysis_rules}
+
+{prompt_suffix}
 
 使用以下格式：
 

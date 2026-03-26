@@ -5,6 +5,7 @@ from ddgs import DDGS
 from langchain.tools import tool
 
 from app.ai.context_builder import build_portfolio_text
+from app.ai.llm import get_prompt_suffix
 from app.ai.prompts import build_react_prompt, get_deep_rules
 from app.ai.text_utils import clean_ansi_codes, format_text
 from app.ai.web_tools import fetch_webpage, search_news
@@ -328,6 +329,7 @@ def run_deep_research(analyzer, data_collector, report_dir="reports"):
 务必使用Markdown表格展示所有数据，确保报告字数达到10000字以上！""",
             "current_date": current_date,
             "analysis_rules": get_deep_rules(),
+            "prompt_suffix": get_prompt_suffix(),
         }
     )
 

@@ -7,6 +7,13 @@ from loguru import logger
 
 import fund
 from ai_analyzer import AIAnalyzer, fetch_webpage, search_news
+from app.ai.llm import get_prompt_suffix
+from app.ai.lmstudio_compat import (
+    call_lmstudio_raw,
+    extract_html_from_reasoning,
+    is_lmstudio_backend,
+    should_fallback_to_reasoning,
+)
 
 analyzer = AIAnalyzer()
 
@@ -129,6 +136,76 @@ def get_real_time_data_context(user_message: str, history: list[dict]) -> str:
         return "数据获取失败，请稍后重试"
 
 
+def _clean_history_messages(history: list[dict]) -> list[tuple[str, str]]:
+    cleaned: list[tuple[str, str]] = []
+    seen_user = False
+
+    for msg in history[-10:]:
+        role = msg.get("role", "")
+        content = msg.get("content", "")
+        if not content or not content.strip():
+            continue
+
+        if role == "user":
+            seen_user = True
+            cleaned.append(("user", content))
+            continue
+
+        if role == "assistant" and seen_user:
+            clean_content = content
+            if "<" in content and ">" in content:
+                parser = _HTMLTextExtractor()
+                try:
+                    parser.feed(content)
+                    extracted = parser.get_text()
+                    if extracted and len(extracted) > 10:
+                        clean_content = extracted
+                except Exception:
+                    pass
+            cleaned.append(("assistant", clean_content))
+
+    return cleaned
+
+
+def _build_lmstudio_prompt(user_message: str, backend_context: str, history: list[dict], prompt_suffix: str) -> str:
+    history_lines: list[str] = []
+    for role, content in _clean_history_messages(history):
+        prefix = "用户" if role == "user" else "助手"
+        history_lines.append(f"{prefix}: {content}")
+
+    history_block = "\n".join(history_lines) if history_lines else "无有效历史上下文"
+
+    prompt = f"""你是一位金融分析助手。请直接输出分析内容，不要输出状态信息，不要输出“正在分析/正在搜索”。
+
+输出要求：
+- 使用简洁 HTML 片段输出，适合深色主题
+- 文本使用 <p style="color:#e0e0e0;margin:1px 0;line-height:1.2">
+- 看多/正面可用 <span style="color:#4caf50;font-weight:bold">
+- 看空/风险可用 <span style="color:#f44336;font-weight:bold">
+- 如果引用列表，使用紧凑 <ul> / <li>
+- 直接给结论、依据和风险，不要复述任务
+
+历史上下文：
+{history_block}
+
+页面实时数据：
+{backend_context}
+
+当前用户问题：
+{user_message}
+"""
+    if prompt_suffix:
+        prompt = f"{prompt}\n\n{prompt_suffix}"
+    return prompt
+
+
+def _stream_text_chunks(content: str) -> Generator[str, None, None]:
+    chunk_size = 80 if len(content) < 2000 else 150
+    for i in range(0, len(content), chunk_size):
+        chunk = content[i : i + chunk_size]
+        yield f"data: {json.dumps({'type': 'content', 'chunk': chunk}, ensure_ascii=False)}\n\n"
+
+
 def stream_chat_sse(user_message: str, history: list[dict]) -> Generator[str, None, None]:
     try:
         llm = analyzer.init_langchain_llm(fast_mode=True)
@@ -138,6 +215,41 @@ def stream_chat_sse(user_message: str, history: list[dict]) -> Generator[str, No
 
         yield f"data: {json.dumps({'type': 'status', 'message': '正在获取相关数据...'}, ensure_ascii=False)}\n\n"
         backend_context = get_real_time_data_context(user_message, history)
+        prompt_suffix = get_prompt_suffix()
+
+        if is_lmstudio_backend():
+            lmstudio_prompt = _build_lmstudio_prompt(user_message, backend_context, history, prompt_suffix)
+            raw_response = call_lmstudio_raw([{"role": "user", "content": lmstudio_prompt}], max_tokens=1200)
+            content = raw_response["content"] or ""
+
+            if not content.strip():
+                extracted_html = extract_html_from_reasoning(raw_response["reasoning_content"] or "")
+                if extracted_html:
+                    logger.warning("LM Studio content empty, using extracted HTML from reasoning_content")
+                    content = extracted_html
+
+            if not content.strip() and should_fallback_to_reasoning():
+                reasoning = raw_response["reasoning_content"] or ""
+                if reasoning.strip():
+                    content = (
+                        "<p style=\"color:#ff9800;margin:1px 0;line-height:1.2\">"
+                        "调试模式：模型未返回正式 content，以下为 reasoning_content 回退输出。</p>"
+                        f"<pre style=\"white-space:pre-wrap;color:#e0e0e0;line-height:1.2\">{reasoning}</pre>"
+                    )
+
+            if not content.strip():
+                logger.error(
+                    "LM Studio returned empty content. finish_reason={} usage={}",
+                    raw_response["finish_reason"],
+                    raw_response["usage"],
+                )
+                yield f"data: {json.dumps({'type': 'error', 'message': 'LM Studio returned empty content. Please check model thinking/template settings.'}, ensure_ascii=False)}\n\n"
+                return
+
+            for chunk in _stream_text_chunks(content):
+                yield chunk
+            yield f"data: {json.dumps({'type': 'done'})}\n\n"
+            return
 
         tools = [search_news, fetch_webpage]
         llm_with_tools = llm.bind_tools(tools)
@@ -201,6 +313,8 @@ Provide insights, not raw tables. Use context data. If user says "它", check hi
         )
 
         combined_input = f"CONTEXT FROM PAGE (后端实时数据):\n{backend_context}\n\nUSER QUESTION: {user_message}"
+        if prompt_suffix:
+            combined_input = f"{combined_input}\n\n{prompt_suffix}"
         messages.append(HumanMessage(content=combined_input))
 
         max_iterations = 5
@@ -214,7 +328,7 @@ Provide insights, not raw tables. Use context data. If user says "它", check hi
                 logger.debug(f"\n[Iteration {iteration}] Final iteration - forcing answer without tools")
                 messages.append(
                     HumanMessage(
-                        content="Please provide your final answer now based on all the information gathered. Do not call any more tools."
+                        content=f"Please provide your final answer now based on all the information gathered. Do not call any more tools.\n\n{prompt_suffix}"
                     )
                 )
                 response = llm.invoke(messages)
@@ -265,7 +379,10 @@ You must provide ACTUAL ANALYSIS, not status messages.
 Example of what you should output:
 <p style='color: #e0e0e0; margin: 1px 0; line-height: 1.2;'>国金量化基金今日表现稳健，主要配置电子、医药等成长板块...</p>
 
-Now provide your REAL analysis without any status messages."""
+Now provide your REAL analysis without any status messages.
+
+"""
+                        + (f"\n\n{prompt_suffix}" if prompt_suffix else "")
                     )
                 )
                 continue
