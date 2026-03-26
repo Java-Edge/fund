@@ -10,9 +10,6 @@ redis>=4.0.0
 pymysql>=1.0.0
 
 # LangChain for AI analysis
-langchain>=0.3.27
-langchain-openai>=0.3.35
-langchain-core>=0.3.80
 
 # DuckDuckGo search for fact verification
 ddgs>=1.0.0

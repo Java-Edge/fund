@@ -25,7 +25,6 @@ except ImportError:
     REDIS_AVAILABLE = False
     logger.warning("redis package not installed, cache disabled")
 
-from ai_analyzer import AIAnalyzer
 from module_html import get_table_html
 
 sem = threading.Semaphore(5)
@@ -191,7 +190,6 @@ class MaYiFund:
             "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36"
         }
         self._csrf = ""
-        self.report_dir = None  # 默认不输出报告文件（需通过 -o 参数指定）
         self.load_cache()
         self.init()
         self.result = []
@@ -1155,8 +1153,8 @@ class MaYiFund:
         ]).split("\n"):
             logger.info(line_msg)
 
-    def run(self, is_add=False, is_delete=False, is_hold=False, is_not_hold=False, report_dir=None,
-            deep_mode=False, fast_mode=False, with_ai=False, select_mode=False, mark_sector=False, unmark_sector=False):
+    def run(self, is_add=False, is_delete=False, is_hold=False, is_not_hold=False,
+            select_mode=False, mark_sector=False, unmark_sector=False):
 
         if select_mode:
             self.select_fund()
@@ -1171,9 +1169,6 @@ class MaYiFund:
         if unmark_sector:
             self.unmark_fund_sector()
             return
-
-        # 存储报告目录到实例属性（None 表示不保存报告文件）
-        self.report_dir = report_dir
 
         if not self.CACHE_MAP:
             logger.warning("暂无缓存代码信息, 请先添加基金代码")
@@ -1247,8 +1242,6 @@ class MaYiFund:
             self.A()
             self.get_market_info()
             self.search_code()
-            if with_ai:
-                self.ai_analysis(deep_mode=deep_mode, fast_mode=fast_mode)
 
     def get_market_info(self, is_return=False):
         result = []
@@ -1832,22 +1825,6 @@ class MaYiFund:
             </div>
             '''
 
-    def ai_analysis(self, deep_mode=False, fast_mode=False):
-        """使用AI分析器进行市场分析
-
-        Args:
-            deep_mode: 是否启用深度研究模式（默认False）
-            fast_mode: 是否启用快速分析模式（默认False）
-        """
-        analyzer = AIAnalyzer()
-        if deep_mode:
-            analyzer.analyze_deep(self, report_dir=self.report_dir)
-        elif fast_mode:
-            analyzer.analyze_fast(self, report_dir=self.report_dir)
-        else:
-            analyzer.analyze(self, report_dir=self.report_dir)
-
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='MaYiFund')
     parser.add_argument('-a', '--add', action='store_true', help='添加基金代码')
@@ -1857,14 +1834,7 @@ if __name__ == '__main__':
     parser.add_argument("-e", "--mark_sector", action="store_true", help="标记板块")
     parser.add_argument("-u", "--unmark_sector", action="store_true", help="删除标记板块")
     parser.add_argument("-s", "--select", action="store_true", help="选择板块查看基金列表")
-    parser.add_argument("-o", "--output", type=str, nargs='?', const="reports", default=None,
-                        help="输出AI分析报告到指定目录（默认: reports）。只有使用此参数时才会保存报告文件")
-    parser.add_argument("-f", "--fast", action="store_true", help="启用快速分析模式")
-    parser.add_argument("-D", "--deep", action="store_true", help="启用深度研究模式")
-    parser.add_argument("-W", "--with-ai", action="store_true", help="AI分析")
     args = parser.parse_args()
 
     mayi_fund = MaYiFund()
-    # 只有指定了 -o 参数时才传入 report_dir，否则传入 None 表示不保存报告
-    report_dir = args.output if args.output is not None else None
-    mayi_fund.run(args.add, args.delete, args.hold, args.not_hold, report_dir, args.deep, args.fast, args.with_ai, args.select, args.mark_sector, args.unmark_sector)
+    mayi_fund.run(args.add, args.delete, args.hold, args.not_hold, args.select, args.mark_sector, args.unmark_sector)

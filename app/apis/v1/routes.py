@@ -1,12 +1,10 @@
 import datetime
 from typing import Any
 
-from flask import Blueprint, Response, redirect, request, stream_with_context
+from flask import Blueprint, Response, redirect, request
 from loguru import logger
 
-from app.schemas.chat import ChatRequest
 from app.schemas.fund import FundBatchRequest, FundCodePath
-from app.services.chat_service import stream_chat_sse
 from app.services.fund_service import (
     batch_query_funds_service,
     get_fund_estimate_service,
@@ -25,29 +23,6 @@ from app.utils.http import (
 )
 
 api_v1_bp = Blueprint("api_v1", __name__)
-
-
-@api_v1_bp.route("/api/chat", methods=["POST", "OPTIONS"])
-def chat() -> Response:
-    try:
-        payload = validate_model(
-            ChatRequest,
-            request.get_json() or {},
-            error_message="Invalid request payload",
-        )
-    except RequestValidationError:
-        return error_response(
-            "Bad Request",
-            400,
-            field="error",
-            extra={"message": "Invalid request payload"},
-        )
-
-    return Response(
-        stream_with_context(stream_chat_sse(payload.message, payload.history_as_dicts())),
-        mimetype="text/event-stream",
-        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
-    )
 
 
 @api_v1_bp.route("/", methods=["GET"])
