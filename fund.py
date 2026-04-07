@@ -211,19 +211,31 @@ class MaYiFund:
             json.dump(self.CACHE_MAP, f, ensure_ascii=False, indent=4)
 
     def init(self):
-        res = self.session.get("https://www.fund123.cn/fund", headers={
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
-            "Accept-Language": "zh-CN,zh;q=0.9",
-            "Connection": "keep-alive",
-            "Upgrade-Insecure-Requests": "1",
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36"
-        }, timeout=10, verify=False)
-        self._csrf = re.findall('\"csrf\":\"(.*?)\"', res.text)[0]
+        try:
+            res = self.session.get("https://www.fund123.cn/fund", headers={
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+                "Accept-Language": "zh-CN,zh;q=0.9",
+                "Connection": "keep-alive",
+                "Upgrade-Insecure-Requests": "1",
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36"
+            }, timeout=10, verify=False)
+            csrf_matches = re.findall('\"csrf\":\"(.*?)\"', res.text)
+            if csrf_matches:
+                self._csrf = csrf_matches[0]
+            else:
+                logger.warning("未能从 fund123.cn 获取 CSRF token，部分功能可能受限")
+                self._csrf = ""
+        except Exception as e:
+            logger.warning(f"初始化 fund123.cn session 失败: {e}，部分功能可能受限")
+            self._csrf = ""
 
-        self.baidu_session.get("https://gushitong.baidu.com/index/ab-000001", headers={
-            "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
-            "referer": "https://gushitong.baidu.com/"
-        }, timeout=10, verify=False)
+        try:
+            self.baidu_session.get("https://gushitong.baidu.com/index/ab-000001", headers={
+                "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+                "referer": "https://gushitong.baidu.com/"
+            }, timeout=10, verify=False)
+        except Exception as e:
+            logger.warning(f"初始化百度 session 失败: {e}")
         # self.baidu_session.cookies.update({
         #     "BDUSS": "3hJYkhPNEM3Z2xOeH5TLVU4OEhhU1hPUFYxdVV3V0pkd1VEMEhCTEgxRENMWEJsSVFBQUFBJCQAAAAAAAAAAAEAAAAVl0lPamRrZGpiZGIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMKgSGXCoEhlM",
         #     "BDUSS_BFESS": "3hJYkhPNEM3Z2xOeH5TLVU4OEhhU1hPUFYxdVV3V0pkd1VEMEhCTEgxRENMWEJsSVFBQUFBJCQAAAAAAAAAAAEAAAAVl0lPamRrZGpiZGIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMKgSGXCoEhlM",
